@@ -3,6 +3,17 @@
 */
 
 function wait(n) {
+    return new Promise(function (resolve, reject) {
+        setTimeout(function () {
+            resolve();
+        }, (n * 1000));
+    });
 }
+
+// function afterWait() {
+//     console.log("wait completed");
+// }
+
+// wait(5).then(afterWait);
 
 module.exports = wait;
