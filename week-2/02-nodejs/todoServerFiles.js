@@ -39,67 +39,60 @@
 
   Testing the server - run `npm run test-todoServer` command in terminal
  */
+
 const express = require('express');
 const bodyParser = require('body-parser');
+const fs = require('fs').promises;
+const { v4: uuidv4 } = require('uuid');
+const { error } = require('console');
 
 const app = express();
 
 app.use(bodyParser.json());
 
-let todos = [];
-let id = 1;
+const filePath = 'todos.json';
 
-app.post('/todos', (req, res, next) => {
-  const todoToAdd = {
-    id,
-    title: req.body.title,
-    description: req.body.description
-  }
-  id++;
-  todos.push(todoToAdd);
-  res.status(201).json(todoToAdd);
+async function readTodosFromFile() {
+    try {
+        const data = await fs.readFile(filePath, 'utf-8');
+        return JSON.parse(data);
+    } catch (error) {
+        throw error;
+    }
+}
+
+async function writeTodosToFile(todos) {
+    try {
+        await fs.writeFile(filePath, JSON.stringify(todos));
+    } catch (error) {
+        throw error;
+    }
+}
+
+app.post('/todos', async (req, res, next) => {
+    try {
+        const newTodo = {
+            id: uuidv4(),
+            title: req.body.title,
+            description: req.body.description
+        };
+        const todos = await readTodosFromFile();
+
+        todos.push(newTodo);
+
+        await writeTodosToFile(todos);
+
+        res.status(201).json(newTodo);
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ "error": "Something went wrong at our side" });
+    }
 });
 
-app.get('/todos', (req, res, next) => {
-  res.status(200).json(todos);
-})
-
-app.get('/todos/:id', (req, res, next) => {
-  let todo = todos.filter(x => x.id === Number(req.params.id));
-  if (todo.length === 0) {
-    res.status(404).send('Todo not found');
-  } else {
-    res.status(200).json(todo[0]);
-  }
-})
-
-app.delete('/todos/:id', (req, res, next) => {
-  const todoIndex = todos.findIndex(t => t.id === parseInt(req.params.id));
-  if (todoIndex === -1) {
-    res.status(404).send('Todo not found');
-  } else {
-    todos.splice(todoIndex, 1);
-    res.status(200).send();
-  }
-})
-
-app.put('/todos/:id', (req, res, next) => {
-  const todoIndex = todos.findIndex(t => t.id === parseInt(req.params.id));
-  if (todoIndex === -1) {
-    res.status(404).send('Todo not found');
-  } else {
-    todos[todoIndex].title = req.body.title;
-    todos[todoIndex].description = req.body.description;
-    res.status(200).json(todos[todoIndex]);
-  }
-})
-
 app.all('*', (req, res, next) => {
-  res.status(404).send('Route not found')
+    res.status(404).send('Route not found');
 })
 
 app.listen(3000, () => {
-  console.log('App is running at Port 3000');
+    console.log('App is running at port 3000');
 })
-
-module.exports = app;
