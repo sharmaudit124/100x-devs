@@ -44,7 +44,6 @@ const express = require('express');
 const bodyParser = require('body-parser');
 const fs = require('fs').promises;
 const { v4: uuidv4 } = require('uuid');
-const { error } = require('console');
 
 const app = express();
 
@@ -89,10 +88,83 @@ app.post('/todos', async (req, res, next) => {
     }
 });
 
+app.get('/todos', async (req, res, next) => {
+    const todos = await readTodosFromFile();
+    if (todos) {
+        res.status(200).json(todos);
+    } else {
+        res.status(404).json({
+            "error": "todos not found",
+            "status": "404"
+        })
+    }
+
+});
+
+app.get('/todos/:id', async (req, res, next) => {
+    const id = req.params.id;
+    const todos = await readTodosFromFile();
+    const response = todos.filter((todo) => todo.id === id)[0];
+    if (response) {
+        res.status(200).json(response);
+    } else {
+        res.status(404).json({
+            "error": "todo not found",
+            "status": "404"
+        })
+    }
+})
+
+app.delete('/todos/:id', async (req, res, next) => {
+    const id = req.params.id;
+    let todos = await readTodosFromFile();
+    const todo = todos.filter((todo) => todo.id === id)[0];
+
+    if (!todo) {
+        res.status(404).send(`Todo not found with given id ${id}`);
+        return;
+    }
+    let newTodos = todos.filter(
+        (todo) => todo.id !== id
+    );
+
+    await writeTodosToFile(JSON.stringify(newTodos));
+    res.status(204).send(`Todo with id : ${id} is deleted successfully`);
+
+})
+
+app.put('/todos/:id', async (req, res, next) => {
+    const id = req.params.id;
+    const todos = await readTodosFromFile();
+    const todo = todos.filter((todo) => todo.id === id)[0];
+    if (!todo) {
+        res.status(404).send(`Todo not found with given id ${id}`);
+        return;
+    }
+    let index = 0;
+    for (let i = 0; i < todos.length; i++) {
+        if (todo === todos[i]) {
+            index = i;
+            break;
+        }
+    }
+    const updatedTodo = {
+        id: todos[todoIndex].id,
+        title: req.body.title,
+        description: req.body.description
+    };
+
+    todos[todoIndex] = updatedTodo;
+
+    let updatedTodos = await writeTodosToFile(updatedTodo);
+
+    res.status(202).json(updatedTodos[todoIndex]);
+});
+
 app.all('*', (req, res, next) => {
     res.status(404).send('Route not found');
-})
+});
 
 app.listen(3000, () => {
     console.log('App is running at port 3000');
-})
+});
